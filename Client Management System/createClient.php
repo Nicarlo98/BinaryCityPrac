@@ -1,8 +1,9 @@
 <?php
+/**
+ * Establishes a connection to the database using the configuration settings in the `config/conn.php` file.
+ */
 // Database connection
-$pdo = new PDO('mysql:host=localhost;dbname=bcity_cms', 'Nicarlo@98', 'Klievizo@98');
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
+include ('config/conn.php');
 // Helper function to generate client code
 function generateClientCode($name, $pdo)
 {

@@ -1,19 +1,18 @@
 <?php
+
+// At the top of your form page, display any error or success messages
+session_start();
+if (isset($_SESSION['error'])) {
+    echo '<div class="error">' . $_SESSION['error'] . '</div>';
+    unset($_SESSION['error']);
+}
+if (isset($_SESSION['success'])) {
+    echo '<div class="success">' . $_SESSION['success'] . '</div>';
+    unset($_SESSION['success']);
+}
+
 // Database connection
 include ('../config/conn.php');
-// Helper function to generate client code
-function generateClientCode($name, $pdo)
-{
-    $code = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $name), 0, 3));
-    $code = str_pad($code, 3, 'A');
-
-    $stmt = $pdo->prepare("SELECT MAX(SUBSTRING(client_code, 4)) as max_num FROM clients WHERE client_code LIKE ?");
-    $stmt->execute([$code . '%']);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    $num = $result['max_num'] ? intval($result['max_num']) + 1 : 1;
-    return $code . str_pad($num, 3, '0', STR_PAD_LEFT);
-}
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -22,27 +21,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = $_POST['name'];
         $surname = $_POST['surname'];
         $email = $_POST['email'];
-        $stmt = $pdo->prepare("INSERT INTO contacts (name, surname, email) VALUES (?, ?, ?)");
-        $stmt->execute([$name, $surname, $email]);
+
+        try {
+            // First, check if the email already exists
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM contacts WHERE email = ?");
+            $checkStmt->execute([$email]);
+            $emailExists = $checkStmt->fetchColumn();
+
+            if ($emailExists) {
+                // Email already exists, set an error message
+                $_SESSION['error'] = "A contact with this email already exists.";
+            } else {
+                // Email doesn't exist, proceed with insertion
+                $stmt = $pdo->prepare("INSERT INTO contacts (name, surname, email) VALUES (?, ?, ?)");
+                $stmt->execute([$name, $surname, $email]);
+                $_SESSION['success'] = "Contact created successfully.";
+            }
+        } catch (PDOException $e) {
+            // Handle other potential database errors
+            $_SESSION['error'] = "An error occurred: " . $e->getMessage();
+        }
     }
+
+    // Redirect back to the form page
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
-// Fetch clients
-$stmt = $pdo->query("SELECT c.*, COUNT(cc.contact_id) as contact_count 
-                     FROM clients c 
-                     LEFT JOIN client_contact cc ON c.id = cc.client_id 
-                     GROUP BY c.id 
-                     ORDER BY c.name ASC");
-$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch contacts
-$stmt = $pdo->query("SELECT c.*, COUNT(cc.client_id) as client_count 
-                     FROM contacts c 
-                     LEFT JOIN client_contact cc ON c.id = cc.contact_id 
-                     GROUP BY c.id 
-                     ORDER BY c.surname, c.name ASC");
-$contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -103,6 +108,23 @@ $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         input[type="submit"]:hover {
             background-color: #45a049;
         }
+
+        .error {
+            color: red;
+            background-color: #ffe6e6;
+            border: 1px solid red;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .success {
+            color: green;
+            background-color: #e6ffe6;
+            border: 1px solid green;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
     </style>
 </head>
 

@@ -3,7 +3,7 @@
  * Establishes a connection to the database using the configuration settings in the `config/conn.php` file.
  */
 // Database connection
-include ('config/conn.php');
+include ('../config/conn.php');
 // Helper function to generate client code
 function generateClientCode($name, $pdo)
 {
@@ -20,6 +20,7 @@ function generateClientCode($name, $pdo)
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    include ('../config/conn.php');
     if (isset($_POST['create_client'])) {
         $name = $_POST['name'];
         $client_code = generateClientCode($name, $pdo);
@@ -39,6 +40,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
+// Fetch clients
+$stmt = $pdo->query("SELECT c.*, COUNT(cc.contact_id) as contact_count 
+                     FROM clients c 
+                     LEFT JOIN client_contact cc ON c.id = cc.client_id 
+                     GROUP BY c.id 
+                     ORDER BY c.name ASC");
+$clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch contacts
+$stmt = $pdo->query("SELECT c.*, COUNT(cc.client_id) as client_count 
+                     FROM contacts c 
+                     LEFT JOIN client_contact cc ON c.id = cc.contact_id 
+                     GROUP BY c.id 
+                     ORDER BY c.surname, c.name ASC");
+$contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -104,12 +120,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
     <h1>Client Contact Management</h1>
+    <button onclick="window.location.href='./client.php'">Back</button>
 
     <h2>Clients</h2>
-    <form method="post">
-        <input type="text" name="name" placeholder="Client Name" required>
-        <input type="submit" name="create_client" value="Create Client">
-    </form>
+    <?php if (empty($clients)): ?>
+        <p>No client(s) found.</p>
+    <?php else: ?>
+        <h2>Link Client to Contact</h2>
+        <form method="post">
+            <select name="client_id">
+                <?php foreach ($clients as $client): ?>
+                    <option value="<?= $client['id'] ?>"><?= htmlspecialchars($client['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select name="contact_id">
+                <?php foreach ($contacts as $contact): ?>
+                    <option value="<?= $contact['id'] ?>"><?= htmlspecialchars($contact['surname'] . ', ' . $contact['name']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <input type="submit" name="link_contact" value="Link">
+        </form>
+    <?php endif; ?>
 </body>
 
 </html>

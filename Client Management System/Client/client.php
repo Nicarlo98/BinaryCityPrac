@@ -1,36 +1,10 @@
 <?php
-include ('config/conn.php');
-
+/**
+ * Establishes a connection to the database using the configuration settings in the `config/conn.php` file.
+ */
+// Database connection
+include ('../config/conn.php');
 // Helper function to generate client code
-function generateClientCode($name, $pdo)
-{
-    $code = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $name), 0, 3));
-    $code = str_pad($code, 3, 'A');
-
-    $stmt = $pdo->prepare("SELECT MAX(SUBSTRING(client_code, 4)) as max_num FROM clients WHERE client_code LIKE ?");
-    $stmt->execute([$code . '%']);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    $num = $result['max_num'] ? intval($result['max_num']) + 1 : 1;
-    return $code . str_pad($num, 3, '0', STR_PAD_LEFT);
-}
-
-// Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['link_contact'])) {
-        $client_id = $_POST['client_id'];
-        $contact_id = $_POST['contact_id'];
-        $stmt = $pdo->prepare("INSERT INTO client_contact (client_id, contact_id) VALUES (?, ?)");
-        $stmt->execute([$client_id, $contact_id]);
-    } elseif (isset($_POST['unlink_contact'])) {
-        $client_id = $_POST['client_id'];
-        $contact_id = $_POST['contact_id'];
-        $stmt = $pdo->prepare("DELETE FROM client_contact WHERE client_id = ? AND contact_id = ?");
-        $stmt->execute([$client_id, $contact_id]);
-    }
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
-}
 
 // Fetch clients
 $stmt = $pdo->query("SELECT c.*, COUNT(cc.contact_id) as contact_count 
@@ -47,9 +21,7 @@ $stmt = $pdo->query("SELECT c.*, COUNT(cc.client_id) as client_count
                      GROUP BY c.id 
                      ORDER BY c.surname, c.name ASC");
 $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -114,11 +86,30 @@ $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <body>
     <h1>Client Contact Management</h1>
+    <button onclick="window.location.href='../index.php'">Back</button>
+    <button onclick="window.location.href='./createClient.php'">Create Client</button>
+    <button onclick="window.location.href='./linkClient.php'">Link Client to Contact</button>
 
-    <button onclick="window.location.href='./Client/client.php'">Client</button>
-    <button onclick="window.location.href='./Contact/contact.php'">Contact</button>
-
-
+    <h2>Clients</h2>
+    <?php if (empty($clients)): ?>
+        <p>No client(s) found.</p>
+    <?php else: ?>
+        <h2>Table</h2>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Client Code</th>
+                <th>Number of Contacts</th>
+            </tr>
+            <?php foreach ($clients as $client): ?>
+                <tr>
+                    <td><?= htmlspecialchars($client['name']) ?></td>
+                    <td><?= htmlspecialchars($client['client_code']) ?></td>
+                    <td><?= $client['contact_count'] ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    <?php endif; ?>
 </body>
 
 </html>

@@ -1,6 +1,6 @@
 <?php
-include ('config/conn.php');
-
+// Database connection
+include ('../config/conn.php');
 // Helper function to generate client code
 function generateClientCode($name, $pdo)
 {
@@ -17,21 +17,17 @@ function generateClientCode($name, $pdo)
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['link_contact'])) {
-        $client_id = $_POST['client_id'];
-        $contact_id = $_POST['contact_id'];
-        $stmt = $pdo->prepare("INSERT INTO client_contact (client_id, contact_id) VALUES (?, ?)");
-        $stmt->execute([$client_id, $contact_id]);
-    } elseif (isset($_POST['unlink_contact'])) {
-        $client_id = $_POST['client_id'];
-        $contact_id = $_POST['contact_id'];
-        $stmt = $pdo->prepare("DELETE FROM client_contact WHERE client_id = ? AND contact_id = ?");
-        $stmt->execute([$client_id, $contact_id]);
+    include ('../config/conn.php');
+    if (isset($_POST['create_contact'])) {
+        $name = $_POST['name'];
+        $surname = $_POST['surname'];
+        $email = $_POST['email'];
+        $stmt = $pdo->prepare("INSERT INTO contacts (name, surname, email) VALUES (?, ?, ?)");
+        $stmt->execute([$name, $surname, $email]);
     }
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
-
 // Fetch clients
 $stmt = $pdo->query("SELECT c.*, COUNT(cc.contact_id) as contact_count 
                      FROM clients c 
@@ -47,9 +43,7 @@ $stmt = $pdo->query("SELECT c.*, COUNT(cc.client_id) as client_count
                      GROUP BY c.id 
                      ORDER BY c.surname, c.name ASC");
 $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -113,12 +107,13 @@ $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </head>
 
 <body>
-    <h1>Client Contact Management</h1>
-
-    <button onclick="window.location.href='./Client/client.php'">Client</button>
-    <button onclick="window.location.href='./Contact/contact.php'">Contact</button>
-
+    <button onclick="window.location.href='./contact.php'">Back</button>
+    <h2>Contacts</h2>
+    <form method="post">
+        <input type="text" name="name" placeholder="First Name" required>
+        <input type="text" name="surname" placeholder="Surname" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="submit" name="create_contact" value="Create Contact">
+    </form>
 
 </body>
-
-</html>

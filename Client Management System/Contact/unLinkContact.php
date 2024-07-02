@@ -1,17 +1,47 @@
 <?php
+
+session_start();
+
+// Display error and success messages
+if (isset($_SESSION['error'])) {
+    echo '<div class="error">' . $_SESSION['error'] . '</div>';
+    unset($_SESSION['error']);
+}
+if (isset($_SESSION['success'])) {
+    echo '<div class="success">' . $_SESSION['success'] . '</div>';
+    unset($_SESSION['success']);
+}
+
 // Database connection
 include ('../config/conn.php');
 // Helper function to generate client code
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    include ('../config/conn.php');
-    if (isset($_POST['unlink_contact'])) {
-        $client_id = $_POST['client_id'];
-        $contact_id = $_POST['contact_id'];
-        $stmt = $pdo->prepare("DELETE FROM client_contact WHERE client_id = ? AND contact_id = ?");
-        $stmt->execute([$client_id, $contact_id]);
+    try {
+        if (isset($_POST['unlink_contact'])) {
+            $client_id = $_POST['client_id'];
+            $contact_id = $_POST['contact_id'];
+
+            // Check if the link exists
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM client_contact WHERE client_id = ? AND contact_id = ?");
+            $checkStmt->execute([$client_id, $contact_id]);
+            $linkExists = $checkStmt->fetchColumn();
+
+            if (!$linkExists) {
+                $_SESSION['error'] = "This client and contact are not linked.";
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM client_contact WHERE client_id = ? AND contact_id = ?");
+                $stmt->execute([$client_id, $contact_id]);
+                $_SESSION['success'] = "Client and contact successfully unlinked.";
+            }
+        }
+    } catch (PDOException $e) {
+        $_SESSION['error'] = "Database error: " . $e->getMessage();
+    } catch (Exception $e) {
+        $_SESSION['error'] = "An unexpected error occurred: " . $e->getMessage();
     }
+
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
@@ -89,6 +119,22 @@ $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         input[type="submit"]:hover {
             background-color: #45a049;
+        }
+
+        .error {
+            color: red;
+            background-color: #ffe6e6;
+            border: 1px solid red;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .success {
+            color: green;
+            background-color: #e6ffe6;
+            border: 1px solid green;
+            padding: 10px;
+            margin-bottom: 10px;
         }
     </style>
 </head>

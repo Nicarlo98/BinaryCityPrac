@@ -1,6 +1,5 @@
 <?php
 
-// At the top of your form page, display any error or success messages
 session_start();
 if (isset($_SESSION['error'])) {
     echo '<div class="error">' . $_SESSION['error'] . '</div>';

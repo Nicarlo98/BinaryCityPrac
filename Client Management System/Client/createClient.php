@@ -1,4 +1,15 @@
 <?php
+
+session_start();
+if (isset($_SESSION['error'])) {
+    echo '<div class="error">' . $_SESSION['error'] . '</div>';
+    unset($_SESSION['error']);
+}
+if (isset($_SESSION['success'])) {
+    echo '<div class="success">' . $_SESSION['success'] . '</div>';
+    unset($_SESSION['success']);
+}
+
 /**
  * Establishes a connection to the database using the configuration settings in the `config/conn.php` file.
  */
@@ -16,6 +27,14 @@ function generateClientCode($name, $pdo)
         $wordArray = preg_split('/\s+/', strtoupper($name), -1, PREG_SPLIT_NO_EMPTY);
         $preLimAlpha = '';
 
+        /**
+         * Generates a preliminary alpha code based on the input word array or name.
+         *
+         * If the word array has 3 or more elements, the first letter of each of the first 3 words is used.
+         * If the word array has 2 elements, the first letter of each word is used, followed by 'A'.
+         * If the word array has less than 2 elements, the first 3 letters of the name are used.
+         * If the name has less than 3 letters, the available letters are used, followed by 'A's to fill the 3-character code.
+         **/
         if (count($wordArray) >= 3) {
             for ($i = 0; $i < 3; $i++) {
                 $preLimAlpha .= substr($wordArray[$i], 0, 1);
@@ -56,26 +75,59 @@ function clientCodeExists($existingCodes, $code)
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    include ('config/conn.php');
+    include ('../config/conn.php');
     if (isset($_POST['create_client'])) {
         $name = $_POST['name'];
-        $client_code = generateClientCode($name, $pdo);
-        if (!empty($client_code)) {
-            $stmt = $pdo->prepare("INSERT INTO clients (name, client_code) VALUES (?, ?)");
-            $stmt->execute([$name, $client_code]);
-        } else {
-            // Handle the error case
-            echo "Failed to generate a unique client code.";
+        try {
+            // Check if client name already exists
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM clients WHERE name = ?");
+            $checkStmt->execute([$name]);
+            $nameExists = $checkStmt->fetchColumn();
+
+            if ($nameExists) {
+                $_SESSION['error'] = "A client with this name already exists.";
+            } else {
+                $client_code = generateClientCode($name, $pdo);
+                if (!empty($client_code)) {
+                    $stmt = $pdo->prepare("INSERT INTO clients (name, client_code) VALUES (?, ?)");
+                    $stmt->execute([$name, $client_code]);
+                    $_SESSION['success'] = "Client successfully created with code: " . $client_code;
+                } else {
+                    $_SESSION['error'] = "Failed to generate a unique client code.";
+                }
+            }
+        } catch (PDOException $e) {
+            $_SESSION['error'] = "Database error: " . $e->getMessage();
+        } catch (Exception $e) {
+            $_SESSION['error'] = "An unexpected error occurred: " . $e->getMessage();
         }
     } elseif (isset($_POST['link_contact'])) {
-        $client_id = $_POST['client_id'];
-        $contact_id = $_POST['contact_id'];
-        $stmt = $pdo->prepare("INSERT INTO client_contact (client_id, contact_id) VALUES (?, ?)");
-        $stmt->execute([$client_id, $contact_id]);
+        try {
+            $client_id = $_POST['client_id'];
+            $contact_id = $_POST['contact_id'];
+
+            // Check if the link already exists
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM client_contact WHERE client_id = ? AND contact_id = ?");
+            $checkStmt->execute([$client_id, $contact_id]);
+            $linkExists = $checkStmt->fetchColumn();
+
+            if ($linkExists) {
+                $_SESSION['error'] = "This client and contact are already linked.";
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO client_contact (client_id, contact_id) VALUES (?, ?)");
+                $stmt->execute([$client_id, $contact_id]);
+                $_SESSION['success'] = "Client and contact successfully linked.";
+            }
+        } catch (PDOException $e) {
+            $_SESSION['error'] = "Database error: " . $e->getMessage();
+        } catch (Exception $e) {
+            $_SESSION['error'] = "An unexpected error occurred: " . $e->getMessage();
+        }
     }
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
+
 // Fetch clients
 $stmt = $pdo->query("SELECT c.*, COUNT(cc.contact_id) as contact_count 
                      FROM clients c 
@@ -150,6 +202,22 @@ $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         input[type="submit"]:hover {
             background-color: #45a049;
+        }
+
+        .error {
+            color: red;
+            background-color: #ffe6e6;
+            border: 1px solid red;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .success {
+            color: green;
+            background-color: #e6ffe6;
+            border: 1px solid green;
+            padding: 10px;
+            margin-bottom: 10px;
         }
     </style>
 </head>

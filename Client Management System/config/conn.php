@@ -1,4 +1,5 @@
 <?php
+
 try {
     // Database connection
     $pdo = new PDO('mysql:host=localhost;dbname=bcity_cms', 'Nicarlo@98', 'Klievizo@98');

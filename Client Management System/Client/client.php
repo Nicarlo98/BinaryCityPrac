@@ -9,17 +9,6 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-
-// Display error and success messages
-if (isset($_SESSION['error'])) {
-    echo '<div class="error">' . $_SESSION['error'] . '</div>';
-    unset($_SESSION['error']);
-}
-if (isset($_SESSION['success'])) {
-    echo '<div class="success">' . $_SESSION['success'] . '</div>';
-    unset($_SESSION['success']);
-}
-
 // Helper function to generate client code
 function generateClientCode($name, $pdo)
 {
@@ -214,6 +203,18 @@ $pdo = null;
 
     <section class="clientview">
         <div class="container">
+
+            <!-- Display error and success messages -->
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-danger" role="alert"><?= $_SESSION['error'] ?></div>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success" role="alert"><?= $_SESSION['success'] ?></div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+
             <h1>CLIENT</h1>
             <div class="button-group">
                 <!-- Update the button to open the modal -->

@@ -1,16 +1,6 @@
 <?php
 session_start(); // Start the session
 
-// Display error and success messages
-if (isset($_SESSION['error'])) {
-    echo '<div class="error">' . $_SESSION['error'] . '</div>';
-    unset($_SESSION['error']);
-}
-if (isset($_SESSION['success'])) {
-    echo '<div class="success">' . $_SESSION['success'] . '</div>';
-    unset($_SESSION['success']);
-}
-
 // Database connection
 include ('../config/conn.php');
 
@@ -28,17 +18,25 @@ try {
 }
 
 // Fetch contacts
-try {
-    $stmt = $pdo->query("SELECT c.*, COUNT(cc.client_id) as client_count 
-                         FROM contacts c 
-                         LEFT JOIN client_contact cc ON c.id = cc.contact_id 
-                         GROUP BY c.id 
-                         ORDER BY c.surname, c.name ASC");
-    $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $_SESSION['error'] = "Database error fetching contacts: " . $e->getMessage();
-    $contacts = [];
+$stmt = $pdo->query("SELECT c.*, COUNT(cc.client_id) as client_count, 
+                            GROUP_CONCAT(DISTINCT cc.client_id) as linked_client_ids
+                     FROM contacts c
+                     LEFT JOIN client_contact cc ON c.id = cc.contact_id
+                     GROUP BY c.id
+                     ORDER BY c.surname, c.name ASC");
+$contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($contacts as &$contact) {
+    $linked_client_ids = explode(',', $contact['linked_client_ids']);
+    $contact['linked_clients'] = array_map(function ($client_id) use ($clients) {
+        $client = array_filter($clients, function ($c) use ($client_id) {
+            return $c['id'] == $client_id;
+        });
+        return $client ? reset($client) : null;
+    }, $linked_client_ids);
+    $contact['linked_clients'] = array_filter($contact['linked_clients']);
 }
+
 
 // Handle form submissions for unlinking contacts
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -155,6 +153,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </main>
     <section class="contactview">
         <div class="container">
+            <!-- Display error and success messages -->
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-danger" role="alert"><?= $_SESSION['error'] ?></div>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success" role="alert"><?= $_SESSION['success'] ?></div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+
             <h1>CONTACT</h1>
             <div class="button-group">
                 <!-- Update the button to open the modal -->
@@ -242,21 +251,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
             <?php if (empty($contacts)): ?>
-                <p>No contact(s) found.</p>
+                <p>No contacts found.</p>
             <?php else: ?>
                 <table>
                     <tr>
-                        <th>Name</th>
+                        <th>Full Name</th>
                         <th>Surname</th>
                         <th>Email</th>
-                        <th class="text-center">Number of Clients</th>
+                        <th class="text-center">No. of Linked Clients</th>
+                        <th>Action</th>
                     </tr>
                     <?php foreach ($contacts as $contact): ?>
                         <tr>
-                            <td><?= htmlspecialchars($contact['name']) ?></td>
-                            <td><?= htmlspecialchars($contact['surname']) ?></td>
-                            <td><?= htmlspecialchars($contact['email']) ?></td>
+                            <td>
+                                <?= htmlspecialchars($contact['name']) ?>
+                            </td>
+                            <td>
+                                <?= htmlspecialchars($contact['surname'] . ' ' . $contact['name']) ?>
+                            </td>
+                            <td>
+                                <?= htmlspecialchars($contact['email']) ?>
+                            </td>
                             <td class="text-center"><?= $contact['client_count'] ?></td>
+                            <td>
+                                <?php if (!empty($contact['linked_clients'])): ?>
+                                    <?php foreach ($contact['linked_clients'] as $client): ?>
+                                        <a href="unlink_contact.php?contact_id=<?= $contact['id'] ?>&client_id=<?= $client['id'] ?>"
+                                            class="btn btn-sm btn-danger mb-1">Unlink from <?= htmlspecialchars($client['name']) ?></a>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    No linked clients
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </table>

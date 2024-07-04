@@ -26,6 +26,40 @@
             background-color: #ffffff;
             color: blueviolet;
         }
+
+        .card {
+            height: 150px;
+            width: 100%;
+        }
+
+        .row {
+            justify-content: center;
+        }
+
+        .card-header {
+            background-color: inherit;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .card-icon,
+        .card-category {
+            display: flex;
+            align-items: center;
+        }
+
+        .card-title {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .section-title {
+            margin-bottom: 3rem;
+        }
     </style>
 </head>
 
@@ -43,15 +77,12 @@
     </main>
     <div class="container-fluid">
         <div class="row">
-
-
             <div id="content" class="col-md-9 col-lg-10 mx-auto">
                 <section class="CCM text-center">
                     <div class="container">
-                        <h1>Client Contact Management</h1>
-
+                        <h1 class="section-title">Client Contact Management</h1>
                         <div class="row justify-content-center">
-                            <div class="col-lg-4 col-md-6 col-sm-6">
+                            <div class="col-lg-4 col-md-4 col-sm-12">
                                 <div class="card card-stats">
                                     <div class="card-header card-header-purple card-header-icon">
                                         <div class="card-icon">
@@ -70,7 +101,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-4 col-md-6 col-sm-6">
+                            <div class="col-lg-4 col-md-4 col-sm-12">
                                 <div class="card card-stats">
                                     <div class="card-header card-header-teal card-header-icon">
                                         <div class="card-icon">
@@ -87,7 +118,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-4 col-md-6 col-sm-6">
+                            <div class="col-lg-4 col-md-4 col-sm-12">
                                 <div class="card card-stats">
                                     <div class="card-header card-header-indigo card-header-icon">
                                         <div class="card-icon">
